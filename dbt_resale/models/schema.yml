@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: prices  # Replace with your actual model name
+    description: "Resale flat prices fact table with calculated price per sqm"
+    columns:
+      - name: month
+        description: "Month of the resale transaction"
+        tests:
+          - not_null
+          #- unique
+      
+      - name: town
+        description: "Town where the flat is located"
+        tests:
+          - not_null
+      
+      - name: flat_type
+        description: "Type of flat (e.g., 3 ROOM, 4 ROOM)"
+        tests:
+          - not_null
+      
+      - name: resale_price
+        description: "Resale price of the flat"
+        tests:
+          - not_null
+      
+      - name: floor_area_sqm
+        description: "Floor area in square meters"
+        tests:
+          - not_null
+
+      - name: price_per_sqm
+        description: "Calculated price per square meter"
+        tests:
+          - not_null

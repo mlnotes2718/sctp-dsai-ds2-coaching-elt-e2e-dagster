@@ -1,0 +1,8 @@
+version: 2
+sources:
+  - name: resale
+    tables:
+      - name: public_resale_flat_prices_from_jan_2017
+        meta:
+          dagster:
+            asset_key: ["pipeline_meltano"]
