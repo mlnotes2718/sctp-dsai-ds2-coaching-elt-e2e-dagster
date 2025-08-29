@@ -13,6 +13,15 @@ From Supabase, take note of your connection details from the Connection window, 
 
 ![meltano](assets/supabase.png)
 
+
+```yaml
+host: aws-0-us-east-2.pooler.supabase.com
+port: 5432
+database: postgres
+user: postgres.ufkutyufdohbogiqgjel
+pool_mode: session
+
+```
 We're going to add an extrator for Postgress to get our data. An extractor is responsible for pulling data out of any data source. We will use the `tap-postgress` extractor to pull data from the Supabase server. 
 
 Please exit `meltano-ingestion` folder, use `cd ..` to return to the root folder. Create a new Meltano project by running:
