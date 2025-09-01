@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: austin_bike_meltano_raw
+    tables:
+      - name: public_austin_bikeshare_stations
+        meta:
+          dagster:
+            asset_key: ["meltano", "austin_bikeshare_stations"]
+      - name: public_austin_bikeshare_trips
+        meta:
+          dagster:
+            asset_key: ["meltano", "austin_bikeshare_trips"]
+        
