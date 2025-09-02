@@ -1,5 +1,13 @@
 # SCTP DSAI DS2 Coaching ELT  E2E Dagster - Austin Bikeshare End to End Orchestration
 
+You can change the current GCP settings in Meltano and dbt to get the project run. If you want to practice, you can create a new project folder as follows:
+
+```bash
+mkdir austin_bikeshare_e2e_dagster # Use different folder name for your practice
+```
+
+Copy this instruction to the practice folder.
+
 ## Austin Bikeshare End to End Orchestration Setup Meltano
 We will be using ready data from Postgres (Supabase) server. Due to the data size limitation for Supabase, we only upload 500k rows of data including headers to the Supabase. 
 
@@ -48,6 +56,10 @@ Configure the following options:
 - `password`: *database password*
 - `user`: *postgres.username*
 
+Test your configuration:
+```bash
+meltano config tap-postgres test
+```
 
 Next, we need to select the table that we need:
 ```bash
@@ -58,11 +70,6 @@ meltano select tap-postgres "public-austin_bikeshare_stations"
 Use the following command to list
 ```bash
 meltano select tap-postgres --list
-```
-
-Test your configuration:
-```bash
-meltano config tap-postgres test
 ```
 
 ### Add an Loader to Load Data to BigQuery
@@ -99,7 +106,7 @@ You will see the logs printed out in your console. Once the pipeline is complete
 
 
 
-## HDB Resale Price End to End Orchestration Setup dbt
+## Austin Bikeshare End to End Orchestration Setup dbt
 
 Let's create a Dbt project to transform the data in BigQuery. 
 
@@ -117,7 +124,7 @@ Fill in the required config details.
 
 Please note that the profiles is located at the hidden folder .dbt of your home folder. To create separate profiles for each project, create a new file called `profiles.yml` under `rdbt_austin_bikeshare` folder. Then copy the following to `profiles.yml`. Remember to change your key file location and your project ID.
 ```yaml
-resale_flat:
+dbt_austin_bikeshare:
   outputs:
     dev:
       dataset: austin_bikeshare_dagster
@@ -149,6 +156,18 @@ sources:
 ```
 > Create your own dimensions table
 
+> (Optional) If you have star schema, please remember to set materialization either as view or table in the `dbt_project.yml` as follows:
+
+```yaml
+# files using the `{{ config(...) }}` macro.
+models:
+  dbt_austin_bikeshare:
+    +materialized: table
+    star:
+      +materialized: table
+      +schema: star
+```
+
 ### Run Dbt
 
 Check dbt connection first
@@ -165,7 +184,7 @@ Run the dbt project to transform the data.
 dbt run
 ```
 
-Next run dbt test if there are test inplace
+Next run dbt test 
 ```bash
 dbt test
 ```
@@ -174,10 +193,15 @@ dbt test
 
 This is similar to lesson 2.7 Extra - Hands-on with Orchestration II, where we create a dbt-dagster integrated project and we add meltano as a subprocess.
 
-Use the following command:
+Use the following command (exit dbt folder if not already done so):
 
 ```bash
 dagster-dbt project scaffold --project-name dagster_dbt_integration_austin_bikeshare --dbt-project-dir #full-path-to-the-resale-flat-dbt-project-directory
+```
+
+In our example, we can use relative path
+```bash
+dagster-dbt project scaffold --project-name dagster_dbt_integration_austin_bikeshare --dbt-project-dir ./dbt_austin_bikeshare/
 ```
 
 Next we would like to add meltano as subprocess.
@@ -188,21 +212,21 @@ from dagster import AssetExecutionContext, multi_asset, AssetOut
 from dagster_dbt import DbtCliResource, dbt_assets
 import subprocess
 from typing import Tuple
-from .project import austin_bike_dbt_project
+from .project import dbt_austin_bikeshare_project
 
 @multi_asset(
     outs={
         "austin_bikeshare_stations": AssetOut(key=["meltano", "austin_bikeshare_stations"]),
         "austin_bikeshare_trips": AssetOut(key=["meltano", "austin_bikeshare_trips"])
     },
-    compute_kind='meltano'
+    compute_kind="meltano",
 )
 def meltano_austin_bike_pipeline() -> Tuple[None, None]:
     """
     Runs meltano tap-postgres target-bigquery
     """
     cmd = ["meltano", "run", "tap-postgres", "target-bigquery"]
-    cwd = '/Users/aiml/Documents/VSCode-Git/sctp-dsai-ds2-coaching-elt-e2e-dagster/austin_bike_elt_project/meltano-austin-bike'
+    cwd = '/Users/aiml/Downloads/sctp-dsai-ds2-coaching-elt-e2e-dagster/austin_bikeshare_e2e_dagster/meltano_austin_bikeshare'
     try:
         output= subprocess.check_output(cmd,cwd=cwd,stderr=subprocess.STDOUT).decode()
     except subprocess.CalledProcessError as e:
@@ -210,8 +234,9 @@ def meltano_austin_bike_pipeline() -> Tuple[None, None]:
             raise Exception(output)
     return (None, None)
 
-@dbt_assets(manifest=austin_bike_dbt_project.manifest_path)
-def dbt_hdb_resale_dbt_assets(context: AssetExecutionContext, dbt: DbtCliResource):
+
+@dbt_assets(manifest=dbt_austin_bikeshare_project.manifest_path)
+def dbt_austin_bikeshare_dbt_assets(context: AssetExecutionContext, dbt: DbtCliResource):
     yield from dbt.cli(["build"], context=context).stream()
 ```
 
@@ -220,29 +245,26 @@ On `definitions.py` we add meltano pipeline into the definitions
 # definitions.py
 from dagster import Definitions
 from dagster_dbt import DbtCliResource
-from .assets import austin_bike_dbt_dbt_assets, meltano_austin_bike_pipeline
-from .project import austin_bike_dbt_project
+from .assets import dbt_austin_bikeshare_dbt_assets, meltano_austin_bike_pipeline
+from .project import dbt_austin_bikeshare_project
 from .schedules import schedules
 
 defs = Definitions(
-    assets=[
-        meltano_austin_bike_pipeline, 
-        austin_bike_dbt_dbt_assets
-    ],
+    assets=[dbt_austin_bikeshare_dbt_assets, meltano_austin_bike_pipeline],
     schedules=schedules,
     resources={
-        "dbt": DbtCliResource(project_dir=austin_bike_dbt_project),
+        "dbt": DbtCliResource(project_dir=dbt_austin_bikeshare_project),
     },
 )
 ```
 
-To add dependency we set in dbt `source.yml` as follows:
+To add dependency we modified in dbt `source.yml` as follows:
 
 ```yml
 version: 2
 
 sources:
-  - name: austin_bike_meltano_raw
+  - name: austin_bikeshare_dagster_raw
     tables:
       - name: public_austin_bikeshare_stations
         meta:
@@ -255,4 +277,6 @@ sources:
 ```
 
 The final lineage graph is as follows:
+
+![alt text](../assets/austin_bike_graph.png)
 

@@ -1,5 +1,11 @@
 # SCTP DSAI DS2 Coaching ELT  E2E Dagster - HDB Resale Price End to End Orchestration
 
+You can change the current GCP settings in Meltano and dbt to get the project run. If you want to practice, you can create a new project folder as follows:
+
+```bash
+mkdir hdb_resale_e2e_dagster # Use different folder name for your practice
+```
+
 ## HDB Resale Price End to End Orchestration Setup Meltano
 This is the identical copy of the exercise in 2.6. We can use the same environment `dagster` which we created.
 
