@@ -1,5 +1,7 @@
 # Meltano Tap-CSV Target-Postgres (Supabase)
-This is not part of the orchestration. This is for anyone want to learn using Meltano to transfer csv files to Supabase (Postgres). Please note that due to the size of the `bikeshare_trips.csv`, it exceeded the size allowed for Supabase free tier. We only extracted 500,000 rows for practice.
+This is not part of the orchestration. This is for anyone want to learn using Meltano to transfer csv files to Supabase (Postgres). Please note that due to the size of the `bikeshare_trips.csv`, it exceeded the size allowed for Supabase free tier. We only extracted 500,000 rows for practice. 
+
+To practice this meltano exercise, you can create a new folder at the root folder and copy this MD file to the new folder. We will be using teh `dagster` environment.
 
 1. Prepare and get read your csv files. You can also get the csv files from the current `meltano_csv_to_postgres` folder.
 
@@ -30,10 +32,10 @@ plugins:
     pip_url: git+https://github.com/MeltanoLabs/tap-csv.git
     config:
       files:
-      - entity: bikeshare_stations
+      - entity: austin_bikeshare_stations
         path: data/bikeshare_stations.csv
         keys: [station_id]
-      - entity: bikeshare_trips
+      - entity: austin_bikeshare_trips
         path: data/bikeshare_trips_small.csv
         keys: [trip_id]
 ```
