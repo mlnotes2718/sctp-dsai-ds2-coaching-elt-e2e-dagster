@@ -4,6 +4,7 @@ You can change the current GCP settings in Meltano and dbt to get the project ru
 
 ```bash
 mkdir hdb_resale_e2e_dagster # Use different folder name for your practice
+cd hdb_resale_e2e_dagster
 ```
 
 ## HDB Resale Price End to End Orchestration Setup Meltano
@@ -27,7 +28,7 @@ pool_mode: session
 
 We're going to add an extractor for Postgres to get our data. An extractor is responsible for pulling data out of any data source. We will use the `tap-postgress` extractor to pull data from the Supabase server. 
 
-At the root folder, create a new Meltano project by running:
+At the root project folder (`hdb_resale_e2e_dagster`), use your own project folder if you are setting up new. Create a new Meltano project by running:
 
 ```bash
 meltano init meltano_hdb_resale
@@ -54,6 +55,10 @@ Configure the following options:
 - `password`: *database password*
 - `user`: *postgres.username*
 
+Test your configuration:
+```bash
+meltano config tap-postgres test
+```
 
 Next, we need to select the table that we need:
 ```bash
@@ -63,11 +68,6 @@ meltano select tap-postgres "public-resale_flat_prices_from_jan_2017"
 Use the following command to list
 ```bash
 meltano select tap-postgres --list
-```
-
-Test your configuration:
-```bash
-meltano config tap-postgres test
 ```
 
 ### Add an Loader to Load Data to BigQuery
@@ -120,11 +120,11 @@ Fill in the required config details.
 - dataset: resale
 - project: your GCP project ID
 
-Please note that the profiles is located at the hidden folder .dbt of your home folder. The `profiles.yml` that is located in the home folder includes multiple projects. Alternatively, you can create a separate `profiles.yml` for each project.
+Please note that the profiles is located at the hidden folder .dbt of your home folder. The `profiles.yml` that is located in the home folder includes multiple projects. We need to create a separate `profiles.yml` for each project.
 
 To create separate profiles for each project, create a new file called `profiles.yml` under `resale_flat` folder. Then copy the following to `profiles.yml`. Remember to change your key file location and your project ID.
 ```yaml
-resale_flat:
+dbt_hdb_resale:
   outputs:
     dev:
       dataset: resale
@@ -164,7 +164,13 @@ Run the dbt project to transform the data.
 dbt run
 ```
 
-You should see 2 new tables in the `resale_flat` dataset.
+You should see 2 new tables in the `resale` dataset.
+
+If you have data test, you can run 
+
+```bash
+dbt test
+```
 
 ## Dagster Using Subprocess
 
@@ -176,7 +182,7 @@ First the create a project at root project folder
 dagster project scaffold --name dagster_hdb_resale_subprocess
 ```
 
-Please check the `assets.py` and `definitions.py` for details.
+Please copy the following code to the `assets.py` file.
 
 ```python
 # assets.py
@@ -224,7 +230,9 @@ def pipeline_dbt_test()->None:
             output = e.output.decode()
             raise Exception(output)  
 ```
+> You need to copy the dbt and meltano directory path to each asset definitions above under `cwd`.
 
+Please copy the following code to the `definitions.py` file.
 ```python
 # definitions.py
 from dagster import (
@@ -261,12 +269,19 @@ defs = Definitions(
 
 ```
 
+
+
+Run dagster
+```bash
+dagster dev
+```
+
 The resulting lineage graph is as follows:
 
 ![assets/subprocess.png](../assets/subprocess.png)
 
 
-While this process works, we cannot the much details in dbt. Thankfully, there is dbt and Dagster integration as follows.
+While this process works, we cannot see much details in dbt. Thankfully, there is dbt and Dagster integration as follows.
 
 ## Dagster Using dbt Integration
 
@@ -311,6 +326,7 @@ def pipeline_meltano()->None:
 def dbt_hdb_resale_dbt_assets(context: AssetExecutionContext, dbt: DbtCliResource):
     yield from dbt.cli(["build"], context=context).stream()
 ```
+> Similarly, please copy the meltano directory path to the `cwd` field above.
 
 On `definitions.py` we add meltano pipeline into the definitions
 ```python
@@ -347,6 +363,38 @@ sources:
         meta:
           dagster:
             asset_key: ["pipeline_meltano"]
+```
+
+The following is optional, you can also define a scheduler job as follows:
+```python
+"""
+To add a schedule that materializes your dbt assets, uncomment the following lines.
+"""
+from dagster_dbt import build_schedule_from_dbt_selection
+from dagster import define_asset_job, ScheduleDefinition
+from .assets import dbt_hdb_resale_dbt_assets, pipeline_meltano
+
+
+# Create a job that includes both assets
+e2e_etl_job = define_asset_job(
+    name="materialize_elt",
+    selection=[pipeline_meltano, dbt_hdb_resale_dbt_assets]
+)
+
+# Create schedule for the job
+schedules = [
+    ScheduleDefinition(
+        job=e2e_etl_job,
+        cron_schedule="0 6 5 * *",  # 5th of every month at 6 AM
+        name="monthly_etl_schedule"
+    )
+]
+```
+
+Run the dagit
+
+```bash
+dagster dev
 ```
 
 The final lineage graph is as follows:
