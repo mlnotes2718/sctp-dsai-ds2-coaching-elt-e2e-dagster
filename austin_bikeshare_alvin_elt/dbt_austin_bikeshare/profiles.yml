@@ -1,0 +1,14 @@
+dbt_austin_bikeshare:
+  outputs:
+    dev:
+      dataset: 2austin_bikeshare_dagster
+      job_execution_timeout_seconds: 300
+      job_retries: 1
+      keyfile: /Users/aiml/.dbt/sctp-dsai-pt2-181ace543c96.json # Use your path of key file
+      location: US
+      method: service-account
+      priority: interactive
+      project: sctp-dsai-pt2 # enter your google project id
+      threads: 1
+      type: bigquery
+  target: dev

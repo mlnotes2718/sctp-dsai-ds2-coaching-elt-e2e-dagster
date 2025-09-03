@@ -1,0 +1,38 @@
+version: 1
+default_environment: dev
+project_id: a950ae81-7c0b-47e3-92ef-d25eeae3ed9e
+environments:
+- name: dev
+- name: staging
+- name: prod
+plugins:
+  extractors:
+  - name: tap-postgres
+    variant: meltanolabs
+    pip_url: meltanolabs-tap-postgres
+    config:
+      database: postgres
+      filter_schemas:
+      - public
+      host: aws-0-us-east-2.pooler.supabase.com
+      user: postgres.ufkutyufdohbogiqgjel
+    select:
+    - public-austin_bikeshare_trips.*
+    - public-austin_bikeshare_stations.*
+  loaders:
+  - name: target-bigquery
+    variant: z3z1ma
+    pip_url: git+https://github.com/z3z1ma/target-bigquery.git
+    config:
+      batch_size: 104857600
+      credentials_path: /Users/aiml/.dbt/sctp-dsai-pt2-181ace543c96.json
+      dataset: 2austin_bikeshare_dagster_raw
+      denormalized: true
+      flattening_enabled: true
+      flattening_max_depth: 1
+      method: batch_job
+      project: sctp-dsai-pt2
+jobs:
+- name: meltano_elt_bq
+  tasks:
+  - tap-postgres target-bigquery
