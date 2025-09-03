@@ -1,11 +1,11 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="dagster_elt",
+    name="dagster_dbt_integration_austin_bikeshare",
     version="0.0.1",
     packages=find_packages(),
     package_data={
-        "dagster_elt": [
+        "dagster_dbt_integration_austin_bikeshare": [
             "dbt-project/**/*",
         ],
     },

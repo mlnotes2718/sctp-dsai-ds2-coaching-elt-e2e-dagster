@@ -1,9 +1,10 @@
-from dagster import AssetExecutionContext, multi_asset, AssetOut, MaterializeResult, MetadataValue, AssetKey
+# assets.py
+from dagster import AssetExecutionContext, multi_asset, AssetOut, AssetKey 
+from dagster import MaterializeResult, MetadataValue
 from dagster_dbt import DbtCliResource, dbt_assets
 from typing import Tuple
-import subprocess
 import os
-
+import subprocess
 from .project import dbt_austin_bikeshare_project
 
 # =============================================================================
@@ -12,13 +13,13 @@ from .project import dbt_austin_bikeshare_project
 
 @multi_asset(
     outs={
-        "austin_bikeshare_stations": AssetOut(key=["meltano", "public_austin_bikeshare_stations"]),
-        "austin_bikeshare_trips": AssetOut(key=["meltano", "public_austin_bikeshare_trips"])
+        "austin_bikeshare_stations": AssetOut(key=["raw_v2_austin_bikeshare_elt", "public_austin_bikeshare_stations"]),
+        "austin_bikeshare_trips": AssetOut(key=["raw_v2_austin_bikeshare_elt", "public_austin_bikeshare_trips"])
     },
         description="Extract Austin bikeshare data from Postgres to BigQuery via Meltano",
     compute_kind="meltano",
 )
-def meltano_austin_bike_pipeline(context: AssetExecutionContext) -> Tuple[MaterializeResult, MaterializeResult]:
+def meltano_austin_bikeshare_pipeline(context: AssetExecutionContext) -> Tuple[MaterializeResult, MaterializeResult]:
     """
     Multi-asset function that runs a single Meltano job to extract and load 2 tables.
     """
@@ -27,7 +28,7 @@ def meltano_austin_bike_pipeline(context: AssetExecutionContext) -> Tuple[Materi
 
     # Execute Meltano job via subprocess
     result = subprocess.run(
-        ["meltano", "run", "meltano_elt_bq"],  # Actual job name
+        ["meltano", "run", "meltano_postgres_bq_job"],  # Actual job name
         cwd=meltano_project_dir,
         capture_output=True,
         text=True
@@ -46,7 +47,7 @@ def meltano_austin_bike_pipeline(context: AssetExecutionContext) -> Tuple[Materi
     # Return tuple of MaterializeResult (order matches outs definition)
     return (
         MaterializeResult(
-            asset_key=AssetKey(['meltano', 'public_austin_bikeshare_trips']),
+            asset_key=AssetKey(['raw_v2_austin_bikeshare_elt', 'public_austin_bikeshare_trips']),
             metadata={
                 "meltano_job": MetadataValue.text("meltano_elt_bq"),
                 "table": MetadataValue.text("public_austin_bikeshare_trips"),
@@ -54,7 +55,7 @@ def meltano_austin_bike_pipeline(context: AssetExecutionContext) -> Tuple[Materi
             }
         ),
         MaterializeResult(
-            asset_key=AssetKey(['meltano', 'public_austin_bikeshare_stations']),
+            asset_key=AssetKey(['raw_v2_austin_bikeshare_elt', 'public_austin_bikeshare_stations']),
             metadata={
                 "meltano_job": MetadataValue.text("meltano_elt_bq"),
                 "table": MetadataValue.text("public_austin_bikeshare_stations"),
@@ -62,6 +63,10 @@ def meltano_austin_bike_pipeline(context: AssetExecutionContext) -> Tuple[Materi
             }
         )
     )
+
+# =============================================================================
+# DBT TRANSFORMATION ASSETS  
+# =============================================================================
 
 @dbt_assets(manifest=dbt_austin_bikeshare_project.manifest_path)
 def dbt_austin_bikeshare_dbt_assets(context: AssetExecutionContext, dbt: DbtCliResource):

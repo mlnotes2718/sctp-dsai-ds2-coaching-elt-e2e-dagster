@@ -1,7 +1,7 @@
 dbt_austin_bikeshare:
   outputs:
     dev:
-      dataset: 2austin_bikeshare_dagster
+      dataset: analytics_v2_austin_bikeshare_elt # can use your own dataset name
       job_execution_timeout_seconds: 300
       job_retries: 1
       keyfile: /Users/aiml/.dbt/sctp-dsai-pt2-181ace543c96.json # Use your path of key file

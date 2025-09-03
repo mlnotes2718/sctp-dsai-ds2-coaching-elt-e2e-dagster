@@ -7,7 +7,7 @@ This folder has 4 main folder, they are
     .
     |-- hdb_resale_elt_dagster_project/
     |-- austin_bikeshare_elt_dagster_project/
-    |-- austin_bikeshare_e2e_dagster_project/ (Different Implementation)  
+    |-- austin_bikeshare_v2_elt_dagster_project/ (Different Implementation)  
     |-- meltano_csv_to_postgres/ (Not Dagster)    
     └── README.md (this instruction)
 ```
@@ -66,6 +66,6 @@ This folder has 4 main folder, they are
 - If you want to practice a new setup, you can create another project folder with different name and copy the instruction to the new project folder and follow the instructions.
 
 ## Austin Bikeshare ELT Dagster Orchestration II
-- `austin_bikeshare_e2e_dagster_project` contain a full end-to-end dagster orchestration with different implementation.
+- `austin_bikeshare_v2_elt_dagster_project` contain a full end-to-end dagster orchestration with different implementation.
 - The key differences is that we create a job in meltano and run the job instead of running `meltano run tap-postgres target-bigquery`.
 - We also add more context and materialized results in the asset definitions.

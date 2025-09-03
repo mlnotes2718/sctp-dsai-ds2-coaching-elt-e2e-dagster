@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: raw_v2_austin_bikeshare_elt # must match name in Bigquery
+    tables:
+      - name: public_austin_bikeshare_stations
+        meta:
+          dagster:
+            asset_key: ["raw_v2_austin_bikeshare_elt", "public_austin_bikeshare_stations"]
+      - name: public_austin_bikeshare_trips
+        meta:
+          dagster:
+            asset_key: ["raw_v2_austin_bikeshare_elt", "public_austin_bikeshare_trips"]

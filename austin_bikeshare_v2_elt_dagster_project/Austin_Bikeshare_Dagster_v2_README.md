@@ -1,16 +1,18 @@
-# SCTP DSAI DS2 Coaching ELT  E2E Dagster - Austin Bikeshare End to End Orchestration
+# Austin Bikeshare ELT End to End Dagster Orchestration Version 2
+
+This is a different implementation of Dagster orchestration. The key difference is that we add a job in meltano. We also add more information as materialization results. 
 
 You can change the current GCP settings in Meltano and dbt to get the project run. If you want to practice, you can create a new project folder as follows:
 
 ```bash
-mkdir austin_bikeshare_e2e_dagster # Use different folder name for your practice
-cd austin_bikeshare_e2e_dagster
+mkdir austin_bikeshare_v2_elt_dagster_project # Use different folder name for your practice
+cd austin_bikeshare_v2_elt_dagster_project
 ```
 
 Copy this instruction to the practice folder.
 
 ## Austin Bikeshare End to End Orchestration Setup Meltano
-We will be using ready data from Postgres (Supabase) server. Due to the data size limitation for Supabase, we only upload 500k rows of data including headers to the Supabase. 
+We will be using ready data from Postgres (Supabase) server. Due to the data size limitation for Supabase, we only upload 300k rows of data including headers to the Supabase. 
 
 ### Add an Extractor to Pull Data from Postgres (Supabase)
 
@@ -57,6 +59,8 @@ Configure the following options:
 - `password`: *database password*
 - `user`: *postgres.username*
 
+> Please note that if you have done above many times, you can use the file `meltano.yml` to see your settings and make changes. For `password` we prefer to set using interactive settings.
+
 Test your configuration:
 ```bash
 meltano config tap-postgres test
@@ -87,16 +91,19 @@ Set the following options:
 
 - `batch_size`: `104857600`
 - `credentials_path`: _full path to the service account key file_
-- `dataset`: `austin_bikeshare_dagster_raw`
+- `dataset`: `raw_v2_austin_bikeshare_elt`
 - `denormalized`: `true`
 - `flattening_enabled`: `true`
 - `flattening_max_depth`: `1`
 - `method`: `batch_job`
 - `project`: *your_gcp_project_id*
 
-Next we need to add a jobs, so that we can reference to the job from Dagster.
+
+Next we need to add a job, so that we can reference to the job from Dagster.
+
+
 ```bash
-meltano job add meltano_elt_bq --tasks "[tap-postgres target-bigquery]"
+meltano job add meltano_postgres_bq_job --tasks "[tap-postgres target-bigquery]"
 ```
 
 ### Run Supabase (Postgres) to BigQuery
@@ -132,7 +139,7 @@ Please note that the profiles is located at the hidden folder .dbt of your home 
 dbt_austin_bikeshare:
   outputs:
     dev:
-      dataset: austin_bikeshare_dagster
+      dataset: analytics_v2_austin_bikeshare_elt # can use your own dataset name
       job_execution_timeout_seconds: 300
       job_retries: 1
       keyfile: /Users/zanelim/Downloads/personal/secret/meltano-learn-03934027c1d8.json # Use your path of key file
@@ -154,7 +161,7 @@ We can start to create the source and models in the dbt project.
 version: 2
 
 sources:
-  - name: austin_bikeshare_dagster_raw
+  - name: raw_v2_austin_bikeshare_elt # must match name in Bigquery
     tables:
       - name: public_austin_bikeshare_stations
       - name: public_austin_bikeshare_trips
@@ -183,80 +190,121 @@ dbt debug
 
 Optional: you can run `dbt clean` to clear any logs or run file in the dbt folders.
 
-Run the dbt project to transform the data.
+Run the dbt project to transform the data. 
 
 ```bash
-dbt run
+dbt build
 ```
 
-Next run dbt test 
-```bash
-dbt test
-```
+ The command above `dbt build` runs the transformation and perform test at the same time.  
+
 
 ## Dagster Using dbt Integration
 
-This is similar to lesson 2.7 Extra - Hands-on with Orchestration II, where we create a dbt-dagster integrated project and we add meltano as a subprocess.
+This is same as version 1.
 
 Use the following command (exit dbt folder if not already done so):
 
 ```bash
 dagster-dbt project scaffold --project-name dagster_dbt_integration_austin_bikeshare --dbt-project-dir #full-path-to-the-resale-flat-dbt-project-directory
 ```
-
 In our example, we can use relative path
 ```bash
 dagster-dbt project scaffold --project-name dagster_dbt_integration_austin_bikeshare --dbt-project-dir ./dbt_austin_bikeshare/
+```
+```bash
+cd dagster_dbt_integration_austin_bikeshare
 ```
 
 Next we would like to add meltano as subprocess.
 
 ```python
 # assets.py
-from dagster import AssetExecutionContext, multi_asset, AssetOut
+from dagster import AssetExecutionContext, multi_asset, AssetOut, AssetKey 
+from dagster import MaterializeResult, MetadataValue
 from dagster_dbt import DbtCliResource, dbt_assets
-import subprocess
 from typing import Tuple
+import os
+import subprocess
 from .project import dbt_austin_bikeshare_project
+
+# =============================================================================
+# MELTANO EXTRACTION ASSETS
+# =============================================================================
 
 @multi_asset(
     outs={
-        "austin_bikeshare_stations": AssetOut(key=["meltano", "austin_bikeshare_stations"]),
-        "austin_bikeshare_trips": AssetOut(key=["meltano", "austin_bikeshare_trips"])
+        "austin_bikeshare_stations": AssetOut(key=["raw_v2_austin_bikeshare_elt", "public_austin_bikeshare_stations"]),
+        "austin_bikeshare_trips": AssetOut(key=["raw_v2_austin_bikeshare_elt", "public_austin_bikeshare_trips"])
     },
+        description="Extract Austin bikeshare data from Postgres to BigQuery via Meltano",
     compute_kind="meltano",
 )
-def meltano_austin_bike_pipeline() -> Tuple[None, None]:
+def meltano_austin_bikeshare_pipeline(context: AssetExecutionContext) -> Tuple[MaterializeResult, MaterializeResult]:
     """
-    Runs meltano tap-postgres target-bigquery
+    Multi-asset function that runs a single Meltano job to extract and load 2 tables.
     """
-    cmd = ["meltano", "run", "tap-postgres", "target-bigquery"]
-    cwd = '/path/to/your/meltano/folder/meltano_austin_bikeshare'
-    try:
-        output= subprocess.check_output(cmd,cwd=cwd,stderr=subprocess.STDOUT).decode()
-    except subprocess.CalledProcessError as e:
-            output = e.output.decode()
-            raise Exception(output)
-    return (None, None)
+    # Path to Meltano project directory
+    meltano_project_dir = os.path.join(os.path.dirname(__file__), "..", "..", "meltano_austin_bikeshare")
 
+    # Execute Meltano job via subprocess
+    result = subprocess.run(
+        ["meltano", "run", "meltano_postgres_bq_job"],  # Actual job name
+        cwd=meltano_project_dir,
+        capture_output=True,
+        text=True
+    )
+
+    # Log output for debugging
+    context.log.info(f"Meltano stdout: {result.stdout}")
+    if result.stderr:
+        context.log.info(f"Meltano stderr: {result.stderr}")
+    
+    # Handle errors
+    if result.returncode != 0:
+        context.log.error(f"Meltano job failed with return code {result.returncode}")
+        raise Exception("Meltano job failed. Check logs above for details.")
+    
+    # Return tuple of MaterializeResult (order matches outs definition)
+    return (
+        MaterializeResult(
+            asset_key=AssetKey(['raw_v2_austin_bikeshare_elt', 'public_austin_bikeshare_trips']),
+            metadata={
+                "meltano_job": MetadataValue.text("meltano_elt_bq"),
+                "table": MetadataValue.text("public_austin_bikeshare_trips"),
+                "extraction_method": MetadataValue.text("meltano_subprocess")
+            }
+        ),
+        MaterializeResult(
+            asset_key=AssetKey(['raw_v2_austin_bikeshare_elt', 'public_austin_bikeshare_stations']),
+            metadata={
+                "meltano_job": MetadataValue.text("meltano_elt_bq"),
+                "table": MetadataValue.text("public_austin_bikeshare_stations"),
+                "extraction_method": MetadataValue.text("meltano_subprocess")
+            }
+        )
+    )
+
+# =============================================================================
+# DBT TRANSFORMATION ASSETS  
+# =============================================================================
 
 @dbt_assets(manifest=dbt_austin_bikeshare_project.manifest_path)
 def dbt_austin_bikeshare_dbt_assets(context: AssetExecutionContext, dbt: DbtCliResource):
     yield from dbt.cli(["build"], context=context).stream()
 ```
-> Please copy the meltano directory path to the `cwd` field above.
 
 On `definitions.py` we add meltano pipeline into the definitions
 ```python
 # definitions.py
 from dagster import Definitions
 from dagster_dbt import DbtCliResource
-from .assets import dbt_austin_bikeshare_dbt_assets, meltano_austin_bike_pipeline
+from .assets import dbt_austin_bikeshare_dbt_assets, meltano_austin_bikeshare_pipeline
 from .project import dbt_austin_bikeshare_project
 from .schedules import schedules
 
 defs = Definitions(
-    assets=[dbt_austin_bikeshare_dbt_assets, meltano_austin_bike_pipeline],
+    assets=[dbt_austin_bikeshare_dbt_assets, meltano_austin_bikeshare_pipeline],
     schedules=schedules,
     resources={
         "dbt": DbtCliResource(project_dir=dbt_austin_bikeshare_project),
@@ -270,30 +318,30 @@ To add dependency we modified in dbt `source.yml` as follows:
 version: 2
 
 sources:
-  - name: austin_bikeshare_dagster_raw
+  - name: raw_v2_austin_bikeshare_elt # must match name in Bigquery
     tables:
       - name: public_austin_bikeshare_stations
         meta:
           dagster:
-            asset_key: ["meltano", "austin_bikeshare_stations"]
+            asset_key: ["raw_v2_austin_bikeshare_elt", "public_austin_bikeshare_stations"]
       - name: public_austin_bikeshare_trips
         meta:
           dagster:
-            asset_key: ["meltano", "austin_bikeshare_trips"]
+            asset_key: ["raw_v2_austin_bikeshare_elt", "public_austin_bikeshare_trips"]
 ```
-The following is optional, you can also define a scheduler job as follows:
+The following is optional, you can also define a scheduler job under `schedules.py` as follows:
 ```python
+# schedules.py
 """
-To add a schedule that materializes your dbt assets, uncomment the following lines.
+To add a schedule that materializes your dbt assets.
 """
-from dagster_dbt import build_schedule_from_dbt_selection
 from dagster import define_asset_job, ScheduleDefinition
-from .assets import dbt_austin_bikeshare_dbt_assets, meltano_austin_bike_pipeline
+from .assets import dbt_austin_bikeshare_dbt_assets, meltano_austin_bikeshare_pipeline
 
 # Create a job that includes both assets
 e2e_etl_job = define_asset_job(
     name="materialize_elt",
-    selection=[meltano_austin_bike_pipeline, dbt_austin_bikeshare_dbt_assets]
+    selection=[meltano_austin_bikeshare_pipeline, dbt_austin_bikeshare_dbt_assets]
 )
 
 # Create schedule for the job

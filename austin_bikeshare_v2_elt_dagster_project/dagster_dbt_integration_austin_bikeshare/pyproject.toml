@@ -1,5 +1,5 @@
 [project]
-name = "dagster_elt"
+name = "dagster_dbt_integration_austin_bikeshare"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -21,5 +21,5 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.dagster]
-module_name = "dagster_elt.definitions"
-code_location_name = "dagster_elt"
+module_name = "dagster_dbt_integration_austin_bikeshare.definitions"
+code_location_name = "dagster_dbt_integration_austin_bikeshare"

@@ -1,6 +1,6 @@
 version: 1
 default_environment: dev
-project_id: a950ae81-7c0b-47e3-92ef-d25eeae3ed9e
+project_id: d4a682b4-8db6-447b-be9d-74d06ab8dbe5
 environments:
 - name: dev
 - name: staging
@@ -26,13 +26,13 @@ plugins:
     config:
       batch_size: 104857600
       credentials_path: /Users/aiml/.dbt/sctp-dsai-pt2-181ace543c96.json
-      dataset: 2austin_bikeshare_dagster_raw
+      dataset: raw_v2_austin_bikeshare_elt
       denormalized: true
       flattening_enabled: true
       flattening_max_depth: 1
       method: batch_job
       project: sctp-dsai-pt2
 jobs:
-- name: meltano_elt_bq
+- name: meltano_postgres_bq_job
   tasks:
   - tap-postgres target-bigquery
