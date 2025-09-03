@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: fact_trips
+    description: "Fact table for bikeshare trips."
+    columns:
+      - name: trip_id
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null
+      

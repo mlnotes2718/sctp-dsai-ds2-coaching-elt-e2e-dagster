@@ -1,0 +1,30 @@
+version: 1
+default_environment: dev
+project_id: d80422d1-af83-4f19-9c9b-0c13702283c1
+environments:
+- name: dev
+- name: staging
+- name: prod
+plugins:
+  extractors:
+  - name: tap-csv
+    variant: meltanolabs
+    pip_url: git+https://github.com/MeltanoLabs/tap-csv.git
+    config:
+      files:
+      - entity: austin_bikeshare_stations
+        path: data/austin_bikeshare_stations.csv
+        keys: [station_id]
+      - entity: austin_bikeshare_trips
+        path: data/austin_bikeshare_trips_small.csv
+        keys: [trip_id]
+  loaders:
+  - name: target-postgres
+    variant: meltanolabs
+    pip_url: meltanolabs-target-postgres
+    config:
+      batch_size_rows: 50000
+      database: postgres
+      default_target_schema: public
+      host: aws-0-us-east-2.pooler.supabase.com
+      user: postgres.ufkutyufdohbogiqgjel
