@@ -1,7 +1,7 @@
 version: 2
 
 sources:
-  - name: austin_bikeshare_dagster_raw
+  - name: raw_austin_bikeshare_elt # must match name in Bigquery
     tables:
       - name: public_austin_bikeshare_stations
         meta:

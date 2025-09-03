@@ -17,7 +17,7 @@ def meltano_austin_bike_pipeline() -> Tuple[None, None]:
     Runs meltano tap-postgres target-bigquery
     """
     cmd = ["meltano", "run", "tap-postgres", "target-bigquery"]
-    cwd = '/Users/aiml/Downloads/sctp-dsai-ds2-coaching-elt-e2e-dagster/austin_bikeshare_e2e_dagster/meltano_austin_bikeshare'
+    cwd = '/Users/aiml/Downloads/sctp-dsai-ds2-coaching-elt-e2e-dagster/austin_bikeshare_elt_dagster_project/meltano_austin_bikeshare'
     try:
         output= subprocess.check_output(cmd,cwd=cwd,stderr=subprocess.STDOUT).decode()
     except subprocess.CalledProcessError as e:
@@ -28,5 +28,4 @@ def meltano_austin_bike_pipeline() -> Tuple[None, None]:
 
 @dbt_assets(manifest=dbt_austin_bikeshare_project.manifest_path)
 def dbt_austin_bikeshare_dbt_assets(context: AssetExecutionContext, dbt: DbtCliResource):
-    yield from dbt.cli(["build"], context=context).stream()
-    
+    yield from dbt.cli(["build"], context=context).stream()  

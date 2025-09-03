@@ -15,5 +15,5 @@ SELECT DISTINCT
     council_district,
     image,
     modified_date
-FROM {{ source('austin_bikeshare_dagster_raw', 'public_austin_bikeshare_stations') }}
+FROM {{ source('raw_austin_bikeshare_elt', 'public_austin_bikeshare_stations') }}
   

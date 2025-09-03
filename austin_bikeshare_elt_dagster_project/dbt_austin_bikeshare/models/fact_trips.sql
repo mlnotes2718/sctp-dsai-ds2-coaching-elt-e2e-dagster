@@ -9,4 +9,4 @@ SELECT
     end_station_id,
     end_station_name,
     duration_minutes
-FROM {{ source('austin_bikeshare_dagster_raw', 'public_austin_bikeshare_trips') }}
+FROM {{ source('raw_austin_bikeshare_elt', 'public_austin_bikeshare_trips') }}

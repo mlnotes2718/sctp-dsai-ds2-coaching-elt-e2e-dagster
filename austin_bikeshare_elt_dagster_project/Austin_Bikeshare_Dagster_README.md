@@ -1,16 +1,16 @@
-# SCTP DSAI DS2 Coaching ELT  E2E Dagster - Austin Bikeshare End to End Orchestration
+# Austin Bikeshare ELT End to End Dagster Orchestration
 
 You can change the current GCP settings in Meltano and dbt to get the project run. If you want to practice, you can create a new project folder as follows:
 
 ```bash
-mkdir austin_bikeshare_e2e_dagster # Use different folder name for your practice
-cd austin_bikeshare_e2e_dagster
+mkdir austin_bikeshare_elt_dagster_project # Use different folder name for your practice
+cd austin_bikeshare_elt_dagster_project
 ```
 
 Copy this instruction to the practice folder.
 
 ## Austin Bikeshare End to End Orchestration Setup Meltano
-We will be using ready data from Postgres (Supabase) server. Due to the data size limitation for Supabase, we only upload 500k rows of data including headers to the Supabase. 
+We will be using ready data from Postgres (Supabase) server. Due to the data size limitation for Supabase, we only upload 300k rows of data including headers to the Supabase. 
 
 ### Add an Extractor to Pull Data from Postgres (Supabase)
 
@@ -57,6 +57,8 @@ Configure the following options:
 - `password`: *database password*
 - `user`: *postgres.username*
 
+> Please note that if you have done above many times, you can use the file `meltano.yml` to see your settings and make changes. For `password` we prefer to set using interactive settings.
+
 Test your configuration:
 ```bash
 meltano config tap-postgres test
@@ -87,7 +89,7 @@ Set the following options:
 
 - `batch_size`: `104857600`
 - `credentials_path`: _full path to the service account key file_
-- `dataset`: `austin_bikeshare_dagster_raw`
+- `dataset`: `raw_austin_bikeshare_elt`
 - `denormalized`: `true`
 - `flattening_enabled`: `true`
 - `flattening_max_depth`: `1`
@@ -128,7 +130,7 @@ Please note that the profiles is located at the hidden folder .dbt of your home 
 dbt_austin_bikeshare:
   outputs:
     dev:
-      dataset: austin_bikeshare_dagster
+      dataset: analytics_austin_bikeshare_elt # can use your own dataset name
       job_execution_timeout_seconds: 300
       job_retries: 1
       keyfile: /Users/zanelim/Downloads/personal/secret/meltano-learn-03934027c1d8.json # Use your path of key file
@@ -150,7 +152,7 @@ We can start to create the source and models in the dbt project.
 version: 2
 
 sources:
-  - name: austin_bikeshare_dagster_raw
+  - name: raw_austin_bikeshare_elt # must match name in Bigquery
     tables:
       - name: public_austin_bikeshare_stations
       - name: public_austin_bikeshare_trips
@@ -199,10 +201,12 @@ Use the following command (exit dbt folder if not already done so):
 ```bash
 dagster-dbt project scaffold --project-name dagster_dbt_integration_austin_bikeshare --dbt-project-dir #full-path-to-the-resale-flat-dbt-project-directory
 ```
-
 In our example, we can use relative path
 ```bash
 dagster-dbt project scaffold --project-name dagster_dbt_integration_austin_bikeshare --dbt-project-dir ./dbt_austin_bikeshare/
+```
+```bash
+cd dagster_dbt_integration_austin_bikeshare
 ```
 
 Next we would like to add meltano as subprocess.
@@ -266,7 +270,7 @@ To add dependency we modified in dbt `source.yml` as follows:
 version: 2
 
 sources:
-  - name: austin_bikeshare_dagster_raw
+  - name: raw_austin_bikeshare_elt # must match name in Bigquery
     tables:
       - name: public_austin_bikeshare_stations
         meta:
@@ -277,12 +281,12 @@ sources:
           dagster:
             asset_key: ["meltano", "austin_bikeshare_trips"]
 ```
-The following is optional, you can also define a scheduler job as follows:
+The following is optional, you can also define a scheduler job under `schedules.py` as follows:
 ```python
+# schedules.py
 """
-To add a schedule that materializes your dbt assets, uncomment the following lines.
+To add a schedule that materializes your dbt assets.
 """
-from dagster_dbt import build_schedule_from_dbt_selection
 from dagster import define_asset_job, ScheduleDefinition
 from .assets import dbt_austin_bikeshare_dbt_assets, meltano_austin_bike_pipeline
 

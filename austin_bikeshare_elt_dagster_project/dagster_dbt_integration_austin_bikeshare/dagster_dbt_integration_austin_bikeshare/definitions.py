@@ -1,3 +1,4 @@
+# definitions.py
 from dagster import Definitions
 from dagster_dbt import DbtCliResource
 from .assets import dbt_austin_bikeshare_dbt_assets, meltano_austin_bike_pipeline
