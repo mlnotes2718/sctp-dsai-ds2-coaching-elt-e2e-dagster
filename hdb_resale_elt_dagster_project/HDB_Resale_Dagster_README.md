@@ -1,10 +1,10 @@
-# SCTP DSAI DS2 Coaching ELT  E2E Dagster - HDB Resale Price End to End Orchestration
+# HDB Resale Price ELT End to End Dagster Orchestration
 
 You can change the current GCP settings in Meltano and dbt to get the project run. If you want to practice, you can create a new project folder as follows:
 
 ```bash
-mkdir hdb_resale_e2e_dagster # Use different folder name for your practice
-cd hdb_resale_e2e_dagster
+mkdir hdb_resale_elt_dagster_project # Use different folder name for your practice
+cd hdb_resale_elt_dagster_project
 ```
 
 ## HDB Resale Price End to End Orchestration Setup Meltano
@@ -84,7 +84,7 @@ Set the following options:
 
 - `batch_size`: `104857600`
 - `credentials_path`: _full path to the service account key file_
-- `dataset`: `resale`
+- `dataset`: `resale` _You can use different dataset name to differentiate from previous exercise_ 
 - `denormalized`: `true`
 - `flattening_enabled`: `true`
 - `flattening_max_depth`: `1`
@@ -127,7 +127,7 @@ To create separate profiles for each project, create a new file called `profiles
 dbt_hdb_resale:
   outputs:
     dev:
-      dataset: resale
+      dataset: resale # You can use different dataset name
       job_execution_timeout_seconds: 300
       job_retries: 1
       keyfile: /Users/zanelim/Downloads/personal/secret/meltano-learn-03934027c1d8.json # Use your path of key file
@@ -180,6 +180,7 @@ First the create a project at root project folder
 
 ```bash
 dagster project scaffold --name dagster_hdb_resale_subprocess
+cd dagster_hdb_resale_subprocess
 ```
 
 Please copy the following code to the `assets.py` file.
@@ -190,45 +191,45 @@ from dagster import asset
 import subprocess
 
 
-@asset
+@asset(compute_kind="meltano")
 def pipeline_meltano()->None:
     """
     Runs meltano tap-postgres target-bigquery
     """
     cmd = ["meltano", "run", "tap-postgres", "target-bigquery"]
     # path to meltano folder
-    cwd = '/path/to/your/folder/meltano_hdb_resale'
+    cwd = '/Users/aiml/Downloads/sctp-dsai-ds2-coaching-elt-e2e-dagster/hdb_resale_elt_dagster_project/meltano_hdb_resale'
     try:
         output= subprocess.check_output(cmd,cwd=cwd,stderr=subprocess.STDOUT).decode()
     except subprocess.CalledProcessError as e:
             output = e.output.decode()
             raise Exception(output)
 
-@asset(deps=[pipeline_meltano])
+@asset(deps=[pipeline_meltano], kinds={"dbt", "bigquery"})
 def pipeline_dbt_run()->None:
     """
     Runs dbt run 
     """
     cmd = ["dbt", "run"]
-    cwd = '/path/to/your/folder/dbt_hdb_resale'
+    cwd = '/Users/aiml/Downloads/sctp-dsai-ds2-coaching-elt-e2e-dagster/hdb_resale_elt_dagster_project/dbt_hdb_resale'
     try:
         output= subprocess.check_output(cmd,cwd=cwd,stderr=subprocess.STDOUT).decode()
     except subprocess.CalledProcessError as e:
             output = e.output.decode()
             raise Exception(output)
 
-@asset(deps=[pipeline_dbt_run])
+@asset(deps=[pipeline_dbt_run], kinds={"dbt", "bigquery"})
 def pipeline_dbt_test()->None:
     """
     Runs dbt test 
     """
     cmd = ["dbt", "test"]
-    cwd = '/path/to/your/folder/dbt_hdb_resale'
+    cwd = '/Users/aiml/Downloads/sctp-dsai-ds2-coaching-elt-e2e-dagster/hdb_resale_elt_dagster_project/dbt_hdb_resale'
     try:
         output= subprocess.check_output(cmd,cwd=cwd,stderr=subprocess.STDOUT).decode()
     except subprocess.CalledProcessError as e:
             output = e.output.decode()
-            raise Exception(output)  
+            raise Exception(output) 
 ```
 > You need to copy the dbt and meltano directory path to each asset definitions above under `cwd`.
 
@@ -287,7 +288,9 @@ While this process works, we cannot see much details in dbt. Thankfully, there i
 
 This is similar to lesson 2.7 Extra - Hands-on with Orchestration II, where we create a dbt-dagster integrated project and we add meltano as a subprocess.
 
-Use the following command:
+Please exit to the project root folder `hdb_resale_elt_dagster_project` by using `cd ..`.
+
+Use the following command to create another dagster project:
 
 ```bash
 dagster-dbt project scaffold --project-name dagster_dbt_integration_hdb_resale --dbt-project-dir #full-path-to-the-resale-flat-dbt-project-directory
@@ -296,7 +299,7 @@ If you run `dagster dev` at this stage, you can see the asset lineage graph as f
 
 ![alt text](../assets/dbt-integration-raw.png)
 
-If you have more complex dimension table, it will present here and the dependencies are automatically resolved by Dagster. Furthermore, we do not need to run dbt test, if you look at the box under `prices`, there is a row call `check`. So when they are materializing the prices table, it will perform dbt test at the same time.
+If you have more complex dimension table, it will present here and the dependencies are automatically resolved by Dagster. Furthermore, we do not need to run `dbt test`, if you look at the box under `prices`, there is a row call `check`. So when they are materializing the prices table, it will perform dbt test at the same time.
 
 Next we would like to add meltano as subprocess.
 
@@ -352,12 +355,12 @@ If you run `dagster dev` at this stage, you can see the lineage graph as follows
 
 This lineage graph is not ideal as there is no dependency between meltano and dbt.
 
-The dependency can be set in dbt `source.yml` as follows:
+The dependency can be set in dbt `source.yml` under the `dbt_hdb_resale/models`as follows:
 
 ```yml
 version: 2
 sources:
-  - name: resale
+  - name: resale # same dataset name set in the profiles
     tables:
       - name: public_resale_flat_prices_from_jan_2017
         meta:
@@ -365,12 +368,12 @@ sources:
             asset_key: ["pipeline_meltano"]
 ```
 
-The following is optional, you can also define a scheduler job as follows:
+The following is optional, you can also define a scheduler job under the dagster folder using details below:
 ```python
+# schedules.py
 """
-To add a schedule that materializes your dbt assets, uncomment the following lines.
+To add a schedule that materializes your dbt assets.
 """
-from dagster_dbt import build_schedule_from_dbt_selection
 from dagster import define_asset_job, ScheduleDefinition
 from .assets import dbt_hdb_resale_dbt_assets, pipeline_meltano
 

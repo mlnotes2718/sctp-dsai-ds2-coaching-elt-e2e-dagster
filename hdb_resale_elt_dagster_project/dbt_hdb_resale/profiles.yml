@@ -1,14 +1,14 @@
 dbt_hdb_resale:
   outputs:
     dev:
-      dataset: hdb_resale
+      dataset: analytics_hdb_resale_elt
       job_execution_timeout_seconds: 300
       job_retries: 1
-      keyfile: /Users/aiml/.dbt/sctp-dsai-ds2-7eb2a1537443.json
+      keyfile: /Users/aiml/.dbt/sctp-dsai-pt2-181ace543c96.json # Use your path of key file
       location: US
       method: service-account
       priority: interactive
-      project: sctp-dsai-ds2
+      project: sctp-dsai-pt2 # enter your google project id
       threads: 1
       type: bigquery
   target: dev

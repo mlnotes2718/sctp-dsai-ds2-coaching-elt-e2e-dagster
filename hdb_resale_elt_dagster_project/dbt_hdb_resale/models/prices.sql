@@ -13,7 +13,7 @@ WITH RAW AS (
         lease_commence_date,
         remaining_lease,
         CAST(resale_price AS FLOAT64) AS resale_price
-    FROM {{ source('resale', 'public_resale_flat_prices_from_jan_2017') }}
+    FROM {{ source('raw_hdb_resale_elt', 'public_resale_flat_prices_from_jan_2017') }}
 )
 SELECT
     *,

@@ -12,7 +12,7 @@ def pipeline_meltano()->None:
     Runs meltano tap-postgres target-bigquery
     """
     cmd = ["meltano", "run", "tap-postgres", "target-bigquery"]
-    cwd = '/Users/aiml/Downloads/sctp-dsai-ds2-coaching-elt-e2e-dagster/hdb_resale_e2e_dagster/meltano_hdb_resale'
+    cwd = '/Users/aiml/Downloads/sctp-dsai-ds2-coaching-elt-e2e-dagster/hdb_resale_elt_dagster_project/meltano_hdb_resale'
     try:
         output= subprocess.check_output(cmd,cwd=cwd,stderr=subprocess.STDOUT).decode()
     except subprocess.CalledProcessError as e:
@@ -22,3 +22,4 @@ def pipeline_meltano()->None:
 @dbt_assets(manifest=dbt_hdb_resale_project.manifest_path)
 def dbt_hdb_resale_dbt_assets(context: AssetExecutionContext, dbt: DbtCliResource):
     yield from dbt.cli(["build"], context=context).stream()
+    

@@ -1,7 +1,7 @@
+# schedules.py
 """
-To add a schedule that materializes your dbt assets, uncomment the following lines.
+To add a schedule that materializes your dbt assets.
 """
-from dagster_dbt import build_schedule_from_dbt_selection
 from dagster import define_asset_job, ScheduleDefinition
 from .assets import dbt_hdb_resale_dbt_assets, pipeline_meltano
 

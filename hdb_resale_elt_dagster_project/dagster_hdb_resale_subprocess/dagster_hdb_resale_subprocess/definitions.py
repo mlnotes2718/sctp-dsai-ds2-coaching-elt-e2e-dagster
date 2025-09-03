@@ -20,7 +20,7 @@ elt_job = define_asset_job(
 # Daily schedule at 2 AM
 daily_schedule = ScheduleDefinition(
     job=elt_job,
-    cron_schedule="0 2 * * *",
+    cron_schedule="0 11 * * *", # Daily at 11 AM
     name="daily_elt_schedule",
     description="Daily resale data pipeline"
 )
